@@ -401,6 +401,39 @@
       }
     }
   }
+<script>
+// --- โหลดฐานข้อมูลจากไฟล์ภายนอก (ถ้ามี) ---
+const DATA_URL = './shops.json'; // ถ้าเก็บในโฟลเดอร์ data/ ให้ใช้ './data/shops.json'
+
+(async function loadInitialData(){
+  try {
+    const res = await fetch(DATA_URL, { cache: 'no-store' });
+    if (!res.ok) return; // ไม่มีไฟล์นี้ก็ข้ามได้
+
+    const data = await res.json();
+    if (Array.isArray(data) && data.length){
+      // แปลงฟิลด์จากไฟล์ enriched ให้เข้ารูปแบบที่แอปใช้ในหน้าจอ
+      shops = data.map((s, idx) => ({
+        id: s.id ?? (Date.now() + idx),
+        name: s.name ?? 'Unnamed',
+        city: s.city ?? '',
+        address: s.area || s.desc_th || s.desc_en || s.address || '',
+        lat: (typeof s.lat === 'number') ? s.lat : (Number.isFinite(Number(s.lat)) ? Number(s.lat) : null),
+        lng: (typeof s.lng === 'number') ? s.lng : (Number.isFinite(Number(s.lng)) ? Number(s.lng) : null),
+        url: s.map_url || s.url || gmapsUrl(s.name ?? '', s.city ?? '')
+      }));
+      render();
+      const info = document.getElementById('convertInfo');
+      if (info) info.textContent = `โหลดจาก shops.json แล้ว ${shops.length} รายการ`;
+    }
+  } catch (e) {
+    console.warn('โหลด shops.json ไม่สำเร็จ (จะใช้โหมดปกติแทน):', e);
+  }
+})();
+
+// (ทางเลือก) ให้เริ่ม Geocode อัตโนมัติหลังโหลด
+// setTimeout(()=>{ if (typeof geocodeAll==='function') geocodeAll(); }, 800);
+</script>
 
   // ---------- Init & Events ----------
   render();
