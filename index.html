@@ -401,23 +401,24 @@
       }
     }
   }
+
+  
 <script>
 // --- โหลดฐานข้อมูลจากไฟล์ภายนอก (ถ้ามี) ---
-const DATA_URL = './shops.json'; // ถ้าเก็บในโฟลเดอร์ data/ ให้ใช้ './data/shops.json'
+const DATA_URL = './shops.json'; // ใช้ไฟล์ชื่อ shops.json ในโฟลเดอร์เดียวกับ index.html
 
 (async function loadInitialData(){
   try {
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) return; // ไม่มีไฟล์นี้ก็ข้ามได้
-
     const data = await res.json();
     if (Array.isArray(data) && data.length){
-      // แปลงฟิลด์จากไฟล์ enriched ให้เข้ารูปแบบที่แอปใช้ในหน้าจอ
       shops = data.map((s, idx) => ({
         id: s.id ?? (Date.now() + idx),
         name: s.name ?? 'Unnamed',
         city: s.city ?? '',
-        address: s.area || s.desc_th || s.desc_en || s.address || '',
+        // แปลงฟิลด์ให้เข้ากับ UI เดิม
+        address: s.area || s.address || s.desc_th || s.desc_en || '',
         lat: (typeof s.lat === 'number') ? s.lat : (Number.isFinite(Number(s.lat)) ? Number(s.lat) : null),
         lng: (typeof s.lng === 'number') ? s.lng : (Number.isFinite(Number(s.lng)) ? Number(s.lng) : null),
         url: s.map_url || s.url || gmapsUrl(s.name ?? '', s.city ?? '')
@@ -431,11 +432,12 @@ const DATA_URL = './shops.json'; // ถ้าเก็บในโฟลเด�
   }
 })();
 
-// (ทางเลือก) ให้เริ่ม Geocode อัตโนมัติหลังโหลด
+// (ทางเลือก) เริ่ม Geocode อัตโนมัติหลังโหลด (ระวัง rate-limit Nominatim)
 // setTimeout(()=>{ if (typeof geocodeAll==='function') geocodeAll(); }, 800);
 </script>
 
-  // ---------- Init & Events ----------
+
+// ---------- Init & Events ----------
   render();
 
   $unit.onchange = ()=>{ unit = $unit.value; render(); }
@@ -472,30 +474,19 @@ const DATA_URL = './shops.json'; // ถ้าเก็บในโฟลเด�
       const parsed = JSON.parse($importText.value);
       if(!Array.isArray(parsed)) throw new Error("รูปแบบไม่ใช่ Array");
       const normalized = parsed.map((s,idx)=>({
-        id: Date.now()+idx,
+        id: s.id ?? (Date.now()+idx),
         name: s.name ?? "Unnamed",
         city: s.city ?? "",
-        lat: Number(s.lat),
-        lng: Number(s.lng),
-        address: s.address ?? "",
-        url: s.url ?? ""
-      })).filter(s=>!Number.isNaN(s.lat)&&!Number.isNaN(s.lng));
-      shops = normalized;
+        // รองรับฟิลด์จากไฟล์ enriched (ยังไม่มี lat/lng ก็รับไว้)
+        address: s.area || s.address || s.desc_th || s.desc_en || "",
+        lat: (typeof s.lat === 'number') ? s.lat : (Number.isFinite(Number(s.lat)) ? Number(s.lat) : null),
+        lng: (typeof s.lng === 'number') ? s.lng : (Number.isFinite(Number(s.lng)) ? Number(s.lng) : null),
+        url: s.map_url || s.url || ""
+      }));
+      shops = normalized; // ❗️ไม่กรองทิ้งแม้ lat/lng จะว่าง
       render();
       $importText.value=""; $importBox.style.display="none";
     }catch(e){ alert("นำเข้าไม่สำเร็จ: "+e.message); }
-  }
-
-  $convertBtn.onclick = ()=>{
-    try{
-      const arr = parseRawText($rawText.value || "");
-      // ใส่ id ให้ด้วย
-      shops = arr.map((s,idx)=>({ id: Date.now()+idx, ...s }));
-      $convertInfo.textContent = `แปลงแล้ว ${shops.length} รายการ – ถ้ายังไม่มีพิกัด ให้กด Geocode ทั้งหมด`;
-      render();
-    }catch(e){
-      alert("แปลงไม่สำเร็จ: "+e.message);
-    }
   };
   $clearRaw.onclick = ()=>{ $rawText.value=""; $convertInfo.textContent=""; };
 
